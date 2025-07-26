@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'CRM Brinque Brinque',
-  description: 'Created with v0',
+  description: 'Created with BitWise',
 }
 
 export default function RootLayout({
