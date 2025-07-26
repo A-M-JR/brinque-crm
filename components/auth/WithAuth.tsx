@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/hooks/use-auth"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface Props {
     module: string
@@ -9,22 +10,23 @@ interface Props {
     fallback?: React.ReactNode
 }
 
-export function WithAuth({
-    module,
-    children,
-    fallback = null,
-}: Props) {
+export function WithAuth({ module, children, fallback = null }: Props) {
     const { group, franchise, loading, isAuthenticated } = useAuth()
     const [allowed, setAllowed] = useState<boolean | null>(null)
+    const router = useRouter()
 
     useEffect(() => {
         const checkPermission = () => {
-            if (!isAuthenticated || !group || !franchise) {
+            if (!isAuthenticated) {
+                router.replace("/login")
+                return
+            }
+
+            if (!group || !franchise) {
                 setAllowed(false)
                 return
             }
 
-            // O nome do módulo TEM QUE BATER com o do banco!
             if (!franchise.modules_enabled?.includes(module)) {
                 setAllowed(false)
                 return
@@ -41,11 +43,10 @@ export function WithAuth({
         if (!loading) {
             checkPermission()
         }
-    }, [group, franchise, isAuthenticated, loading, module])
+    }, [group, franchise, isAuthenticated, loading, module, router])
 
     if (loading || allowed === null) return <p>Verificando permissões...</p>
     if (!allowed) return fallback
 
     return <>{children}</>
 }
-
