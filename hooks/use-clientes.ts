@@ -47,7 +47,7 @@ const mockClientesData = {
     {
       id: "CLI-001",
       nome: "João Silva",
-      email: "julio@email.com",
+      email: "joao@email.com",
       telefone: "(11) 99999-9999",
       cpf: "123.456.789-00",
       endereco: {
@@ -111,7 +111,7 @@ const mockClientesData = {
     {
       id: "CLI-001",
       nome: "João Silva",
-      email: "julio@email.com",
+      email: "joao@email.com",
       telefone: "(11) 99999-9999",
       cpf: "123.456.789-00",
       endereco: {
@@ -152,7 +152,7 @@ const mockClientesData = {
     {
       id: "CLI-001",
       nome: "João Silva",
-      email: "julio@email.com",
+      email: "joao@email.com",
       telefone: "(11) 99999-9999",
       cpf: "123.456.789-00",
       endereco: {

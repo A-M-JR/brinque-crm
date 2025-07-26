@@ -1,4 +1,4 @@
-# 🚀 BitWise Agency System
+# 🚀 CRM SaaS System
 
 Um sistema abrangente de CRM (Customer Relationship Management) construído com Next.js, projetado para gerenciar usuários, leads, produtos, estoque, pedidos e muito mais. O sistema oferece dashboards distintos e funcionalidades específicas para diferentes perfis de usuário: Administrador, Distribuidor e Revendedor.
 

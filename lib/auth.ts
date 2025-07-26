@@ -7,14 +7,12 @@ export interface AuthState {
   isAuthenticated: boolean
 }
 
-// Simulação de contexto de autenticação
 let currentUser: User | null = null
 
 export function login(email: string, password: string): User | null {
   const user = authenticateUser(email, password)
   if (user) {
     currentUser = user
-    // Em uma aplicação real, você salvaria no localStorage ou cookie
     if (typeof window !== "undefined") {
       localStorage.setItem("currentUser", JSON.stringify(user))
     }
@@ -35,7 +33,6 @@ export function getCurrentUser(): User | null {
     return currentUser
   }
 
-  // Tentar recuperar do localStorage
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem("currentUser")
     if (stored) {
@@ -47,22 +44,22 @@ export function getCurrentUser(): User | null {
   return null
 }
 
-export function hasPermission(requiredRole: "admin" | "distribuidor" | "revendedor"): boolean {
+export function isAuthenticated(): boolean {
+  return getCurrentUser() !== null
+}
+
+export function hasPermission(permission: string): boolean {
   const user = getCurrentUser()
-  if (!user) return false
+  if (!user || !Array.isArray(user.permissions)) return false
 
-  // Admin tem acesso a tudo
-  if (user.role === "admin") return true
-
-  // Distribuidor tem acesso a distribuidor e revendedor
-  if (user.role === "distribuidor" && (requiredRole === "distribuidor" || requiredRole === "revendedor")) {
+  // Admin tem todas as permissões
+  if (user.role === "admin" || user.permissions.includes("all")) {
     return true
   }
 
-  // Revendedor só tem acesso a revendedor
-  if (user.role === "revendedor" && requiredRole === "revendedor") {
-    return true
-  }
-
-  return false
+  return user.permissions.includes(permission)
+}
+export function getUserRole(): string {
+  const user = getCurrentUser()
+  return user?.role || "user"
 }

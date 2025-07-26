@@ -2,112 +2,71 @@ export interface User {
   id: string
   name: string
   email: string
-  password: string
-  role: "admin" | "distribuidor" | "revendedor"
-  avatar?: string
-  distribuidor_responsavel?: string // Para revendedores
+  role: "admin" | "manager" | "user"
+  permissions: string[]
 }
 
-export const users: User[] = [
-  // Administradores
+const users: User[] = [
   {
     id: "1",
-    name: "Admin Sistema",
-    email: "admin@crmsaas.com",
-    password: "admin123",
+    name: "Admin",
+    email: "admin@sistema.com",
     role: "admin",
-    avatar: "/placeholder.svg?height=40&width=40",
+    permissions: ["all"],
   },
   {
     id: "2",
-    name: "Super Admin",
-    email: "superadmin@crmsaas.com",
-    password: "super123",
-    role: "admin",
-    avatar: "/placeholder.svg?height=40&width=40",
+    name: "Gerente",
+    email: "gerente@sistema.com",
+    role: "manager",
+    permissions: [
+      "clientes",
+      "pedidos",
+      "vendas",
+      "estoque",
+      "loja",
+      "leads",
+      "pagamentos",
+      "plataformas",
+      "relatorios",
+    ],
   },
-
-  // Distribuidores
   {
     id: "3",
-    name: "João Silva",
-    email: "julio@distribuidor.com",
-    password: "dist123",
-    role: "distribuidor",
-    avatar: "/placeholder.svg?height=40&width=40",
+    name: "Distribuidor",
+    email: "distribuidor@sistema.com",
+    role: "user",
+    permissions: ["clientes", "pedidos", "vendas", "estoque", "loja", "produtos"],
   },
   {
     id: "4",
-    name: "Carlos Mendes",
-    email: "carlos@distribuidor.com",
-    password: "dist123",
-    role: "distribuidor",
-    avatar: "/placeholder.svg?height=40&width=40",
+    name: "Revendedor",
+    email: "revendedor@sistema.com",
+    role: "user",
+    permissions: ["clientes", "pedidos", "vendas", "loja", "produtos"],
   },
   {
     id: "5",
-    name: "Ana Paula",
-    email: "ana@distribuidor.com",
-    password: "dist123",
-    role: "distribuidor",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-
-  // Revendedores
-  {
-    id: "6",
-    name: "Maria Santos",
-    email: "maria@revendedor.com",
-    password: "rev123",
-    role: "revendedor",
-    distribuidor_responsavel: "3", // João Silva
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "7",
-    name: "Pedro Lima",
-    email: "pedro@revendedor.com",
-    password: "rev123",
-    role: "revendedor",
-    distribuidor_responsavel: "3", // João Silva
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "8",
-    name: "Lucia Costa",
-    email: "lucia@revendedor.com",
-    password: "rev123",
-    role: "revendedor",
-    distribuidor_responsavel: "4", // Carlos Mendes
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "9",
-    name: "Roberto Oliveira",
-    email: "roberto@revendedor.com",
-    password: "rev123",
-    role: "revendedor",
-    distribuidor_responsavel: "5", // Ana Paula
-    avatar: "/placeholder.svg?height=40&width=40",
+    name: "Usuário",
+    email: "usuario@sistema.com",
+    role: "user",
+    permissions: ["clientes", "pedidos"],
   },
 ]
 
-export function getUserByEmail(email: string): User | undefined {
-  return users.find((user) => user.email.toLowerCase() === email.toLowerCase())
-}
-
 export function authenticateUser(email: string, password: string): User | null {
-  const user = getUserByEmail(email)
-  if (user && user.password === password) {
+  // Simulação simples de autenticação
+  const user = users.find((u) => u.email === email)
+  if (user && password === "123456") {
     return user
   }
   return null
 }
 
-export function getUsersByRole(role: "admin" | "distribuidor" | "revendedor"): User[] {
-  return users.filter((user) => user.role === role)
+export function getAllUsers(): User[] {
+  return users
 }
 
-export function getRevendedoresByDistribuidor(distribuidorId: string): User[] {
-  return users.filter((user) => user.role === "revendedor" && user.distribuidor_responsavel === distribuidorId)
+export function getUserById(id: string): User | null {
+  return users.find((u) => u.id === id) || null
 }

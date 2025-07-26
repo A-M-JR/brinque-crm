@@ -4,7 +4,7 @@ export const mockLeads = [
   {
     id: "1",
     name: "João Silva",
-    email: "julio.silva@email.com",
+    email: "joao.silva@email.com",
     phone: "(11) 99999-9999",
     source: "Site Principal",
     status: "novo",
