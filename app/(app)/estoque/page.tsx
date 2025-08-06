@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { hasPermission } from '@/lib/auth/hasPermission';
 import { Product, StockMovement, listarProdutosPorFranchise, adicionarMovimentacaoEstoque, atualizarProduto, atualizarInventario, listarMovimentacoesDeEstoque } from '@/lib/supabase/products';
 import { Franchise, listarFranchisesVisiveis } from '@/lib/supabase/franchises';
+import { PageFeedback } from "@/components/ui/page-loader"
 
 // --- Componentes Internos ---
 const StatCard = ({ title, value, icon }: { title: string, value: string | number, icon: React.ReactNode }) => (
@@ -153,7 +154,7 @@ export default function EstoquePage() {
   };
 
   if (authLoading || !permissions.canViewEstoque) {
-    return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+    return <PageFeedback mode='both' />
   }
 
   return (

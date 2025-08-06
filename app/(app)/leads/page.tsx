@@ -6,17 +6,31 @@ import { useRouter } from 'next/navigation';
 // --- Imports ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Eye, UserPlus, Plus } from 'lucide-react';
+import { Search, Eye, UserPlus, Plus, Inbox, CheckCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPermission } from '@/lib/auth/hasPermission';
 import { Lead, listarLeadsPorFranchise, atualizarStatusLead, criarLead } from '@/lib/supabase/leads';
-import { LeadForm, LeadFormData } from '@/components/leads/leadForm'; // Importa o formulário unificado
+import { LeadForm, LeadFormData } from '@/components/leads/leadForm';
+import { Franchise, listarFranchisesVisiveis } from '@/lib/supabase/franchises';
+
+// --- Componente de Cartão de Estatística ---
+const StatCard = ({ title, value, icon }: { title: string, value: string | number, icon: React.ReactNode }) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      {icon}
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+    </CardContent>
+  </Card>
+);
 
 export default function LeadsPage() {
   const router = useRouter();
@@ -36,23 +50,36 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [franchises, setFranchises] = useState<Franchise[]>([]);
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | null>(null);
+
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [currentStatus, setCurrentStatus] = useState<Lead['status'] | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [newLeadDialogOpen, setNewLeadDialogOpen] = useState(false);
 
+  useEffect(() => {
+    if (franchise?.id) {
+      setSelectedFranchiseId(franchise.id);
+      if (franchise.id === 1) { // Super admin
+        listarFranchisesVisiveis(franchise.id).then(setFranchises);
+      }
+    }
+  }, [franchise?.id]);
+
   const fetchLeads = useCallback(async () => {
-    if (!franchise?.id) return;
+    if (!selectedFranchiseId) return;
     setLoading(true);
     try {
-      const data = await listarLeadsPorFranchise(franchise.id);
+      const data = await listarLeadsPorFranchise(selectedFranchiseId);
       setLeads(data || []);
     } catch (error) {
       console.error("Erro ao carregar leads:", error);
     } finally {
       setLoading(false);
     }
-  }, [franchise?.id]);
+  }, [selectedFranchiseId]);
 
   useEffect(() => {
     if (!authLoading && permissions.canView) {
@@ -88,10 +115,9 @@ export default function LeadsPage() {
   };
 
   const handleCreateManualLead = async (data: LeadFormData) => {
-    if (!franchise?.id) return;
+    if (!selectedFranchiseId) return;
     setIsSaving(true);
     try {
-      // CORRIGIDO: Converte 'undefined' para 'null' para alinhar com a tipagem do Supabase
       const leadDataToSave = {
         name: data.name,
         email: data.email,
@@ -99,18 +125,16 @@ export default function LeadsPage() {
         cpf: data.cpf || null,
         city: data.city || null,
         state: data.state || null,
-        franchise_id: franchise.id,
-        status: 'novo' as const, // Garante o tipo literal
+        franchise_id: selectedFranchiseId,
+        status: 'novo' as const,
         form_data: { origem: 'manual' }
       };
 
       await criarLead(leadDataToSave);
       setNewLeadDialogOpen(false);
       await fetchLeads();
-      // TODO: Adicionar toast de sucesso
     } catch (error) {
       console.error("Erro ao criar lead manual:", error);
-      // TODO: Adicionar toast de erro
     } finally {
       setIsSaving(false);
     }
@@ -135,6 +159,12 @@ export default function LeadsPage() {
     }
   };
 
+  const stats = useMemo(() => ({
+    total: leads.length,
+    novos: leads.filter(l => l.status === 'novo').length,
+    convertidos: leads.filter(l => l.status === 'convertido').length,
+  }), [leads]);
+
   const filteredLeads = leads.filter(lead =>
     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -146,31 +176,49 @@ export default function LeadsPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-3xl font-bold">Leads Recebidos</h1>
-        {permissions.canEdit && (
-          <Button onClick={() => setNewLeadDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Lead
-          </Button>
+        {franchise?.id === 1 && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="franchise-select" className="shrink-0">Visualizando Empresa:</Label>
+            <Select value={selectedFranchiseId?.toString()} onValueChange={(value) => setSelectedFranchiseId(Number(value))}>
+              <SelectTrigger id="franchise-select" className="w-[250px]"><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{franchises.map(f => (<SelectItem key={f.id} value={f.id.toString()}>{f.name}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
         )}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard title="Total de Leads" value={stats.total} icon={<Inbox className="h-4 w-4 text-muted-foreground" />} />
+        <StatCard title="Leads Novos" value={stats.novos} icon={<Plus className="h-4 w-4 text-muted-foreground" />} />
+        <StatCard title="Leads Convertidos" value={stats.convertidos} icon={<CheckCheck className="h-4 w-4 text-muted-foreground" />} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Leads</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Lista de Leads</CardTitle>
+              <CardDescription>Visualize e gerencie os leads da empresa selecionada.</CardDescription>
+            </div>
+            {permissions.canEdit && (
+              <Button onClick={() => setNewLeadDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Lead
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-2 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou email..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
+          <div className="relative mb-4">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou email..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
           </div>
           <Table>
             <TableHeader>

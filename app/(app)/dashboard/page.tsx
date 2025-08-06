@@ -1,89 +1,104 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { useAuth } from "@/hooks/use-auth"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Card, CardHeader, CardTitle, CardContent, CardDescription
-} from "@/components/ui/card"
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table"
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, Legend, Tooltip as RechartsTooltip
-} from "recharts"
-import {
-  TrendingUp, TrendingDown, Users, ShoppingCart,
-  Package, DollarSign, PlusCircle
-} from "lucide-react"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Skeleton } from "@/components/ui/skeleton"
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
-// Seus dados (mantidos como no original)
-const salesData = [
-  { month: "Jan", vendas: 4000, pedidos: 2400, clientes: 120 },
-  { month: "Fev", vendas: 3000, pedidos: 1980, clientes: 98 },
-  { month: "Mar", vendas: 2000, pedidos: 1800, clientes: 89 },
-  { month: "Abr", vendas: 2780, pedidos: 2080, clientes: 103 },
-  { month: "Mai", vendas: 1890, pedidos: 1890, clientes: 95 },
-  { month: "Jun", vendas: 2390, pedidos: 2390, clientes: 119 },
-  { month: "Jul", vendas: 3490, pedidos: 3490, clientes: 174 },
-]
+// --- Imports ---
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { AreaChart, Area, ResponsiveContainer, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TrendingUp, TrendingDown, Users, ShoppingCart, DollarSign, Inbox } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { getDashboardData, DashboardData } from "@/lib/supabase/dashboard";
+import { Franchise, listarFranchisesVisiveis } from '@/lib/supabase/franchises';
 
-const revenueData = [
-  { name: "Jan", receita: 45000 },
-  { name: "Fev", receita: 52000 },
-  { name: "Mar", receita: 48000 },
-  { name: "Abr", receita: 61000 },
-  { name: "Mai", receita: 55000 },
-  { name: "Jun", receita: 67000 },
-  { name: "Jul", receita: 72000 },
-]
+// --- Componente de Cartão de Estatística ---
+const StatCard = ({ title, value, change, changeType, icon }: { title: string, value: string, change: string, changeType: 'increase' | 'decrease', icon: React.ReactNode }) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      {icon}
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground flex items-center">
+        {changeType === 'increase' ?
+          <TrendingUp className="h-3 w-3 mr-1 text-green-500" /> :
+          <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
+        }
+        {change} em relação ao mês passado
+      </p>
+    </CardContent>
+  </Card>
+);
 
-const categoryData = [
-  { name: "Eletrônicos", value: 400, color: "hsl(var(--primary))" },
-  { name: "Roupas", value: 300, color: "hsl(var(--primary) / 0.8)" },
-  { name: "Casa", value: 300, color: "hsl(var(--primary) / 0.6)" },
-  { name: "Esportes", value: 200, color: "hsl(var(--primary) / 0.4)" },
-]
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, franchise, isAuthenticated, loading: authLoading } = useAuth();
 
-const topProducts = [
-  { name: "iPhone 15", vendas: 245, receita: "R$ 245.000" },
-  { name: "Samsung Galaxy S24", vendas: 189, receita: "R$ 189.000" },
-  { name: "MacBook Air", vendas: 156, receita: "R$ 312.000" },
-  { name: "AirPods Pro", vendas: 134, receita: "R$ 67.000" },
-  { name: "iPad Air", vendas: 98, receita: "R$ 147.000" },
-]
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
 
-export default function Dashboard() {
-  const router = useRouter()
-  const { user, loading, isAuthenticated } = useAuth()
+  const [franchises, setFranchises] = useState<Franchise[]>([]);
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | null>(null);
+
+  // Define a empresa selecionada inicial e carrega a lista de empresas para o admin
+  useEffect(() => {
+    if (franchise?.id) {
+      setSelectedFranchiseId(franchise.id);
+      if (franchise.id === 1) { // Super admin
+        listarFranchisesVisiveis(franchise.id).then(setFranchises);
+      }
+    }
+  }, [franchise?.id]);
+
+  const fetchData = useCallback(async () => {
+    if (!selectedFranchiseId) return;
+    setLoadingData(true);
+    try {
+      const data = await getDashboardData(selectedFranchiseId);
+      setDashboardData(data);
+    } catch (error) {
+      console.error("Erro ao carregar dados do dashboard:", error);
+      setDashboardData(null); // Limpa dados em caso de erro
+    } finally {
+      setLoadingData(false);
+    }
+  }, [selectedFranchiseId]);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/login")
+    if (!authLoading && isAuthenticated) {
+      fetchData();
     }
-  }, [loading, isAuthenticated, router])
+  }, [authLoading, isAuthenticated, fetchData]);
 
-  if (loading || !isAuthenticated) {
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  if (authLoading || loadingData) {
     return (
       <div className="flex-1 space-y-4 p-8 pt-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-8 w-48" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-80" />
-          <Skeleton className="h-80" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+          <Skeleton className="h-96 col-span-4" />
+          <Skeleton className="h-96 col-span-3" />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -91,97 +106,39 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">
-            Visão geral do seu negócio.
-          </p>
+          <p className="text-sm text-muted-foreground">Visão geral do negócio da empresa selecionada.</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Venda
-          </Button>
-          <Badge variant="outline">
-            Atualizado há 5 min
-          </Badge>
-        </div>
+        {franchise?.id === 1 && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="franchise-select" className="shrink-0">Visualizando Empresa:</Label>
+            <Select value={selectedFranchiseId?.toString()} onValueChange={(value) => setSelectedFranchiseId(Number(value))}>
+              <SelectTrigger id="franchise-select" className="w-[250px]"><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{franchises.map(f => (<SelectItem key={f.id} value={f.id.toString()}>{f.name}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards Dinâmicos */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ 72.540,00</div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +12.5% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
-        {/* Outros KPI Cards permanecem iguais */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+1.234</div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +8.2% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+892</div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-              +15.3% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Produtos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2.456</div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
-              -2.1% em relação ao mês passado
-            </p>
-          </CardContent>
-        </Card>
+        {dashboardData?.kpis.map((kpi, index) => {
+          const icons = [<DollarSign />, <Users />, <ShoppingCart />, <Inbox />];
+          return <StatCard key={index} title={kpi.title} value={kpi.value} change={kpi.change} changeType={kpi.changeType} icon={icons[index % icons.length]} />;
+        })}
       </div>
 
-      {/* Main Charts Grid */}
+      {/* Gráficos Dinâmicos */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
             <CardTitle>Vendas por Mês</CardTitle>
-            <CardDescription>Evolução de receita ao longo do ano</CardDescription>
+            <CardDescription>Evolução de receita ao longo do ano.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            <ChartContainer config={{
-              receita: { label: "Receita", color: "#8884d8" },
-            }}>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+            <ChartContainer config={{ receita: { label: "Receita", color: "hsl(var(--primary))" } }}>
+              <ResponsiveContainer width="100%" height={350}>
+                <AreaChart data={dashboardData?.revenueByMonth}>
+                  <defs><linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} /><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `R$${value / 1000}k`} />
@@ -196,69 +153,47 @@ export default function Dashboard() {
         <Card className="col-span-1 lg:col-span-3">
           <CardHeader>
             <CardTitle>Vendas por Categoria</CardTitle>
-            <CardDescription>Distribuição de vendas por categoria de produto</CardDescription>
+            <CardDescription>Distribuição de vendas por categoria de produto.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={{
-              receita: { label: "Receita", color: "#8884d8" },
-            }}>
-              <ResponsiveContainer width="100%" height={400}>
+            <ChartContainer config={{}}>
+              <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    labelLine={false}
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                  <Pie data={dashboardData?.salesByCategory} cx="50%" cy="50%" innerRadius={80} outerRadius={120} fill="#8884d8" dataKey="value" labelLine={false}>
+                    {dashboardData?.salesByCategory.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
             </ChartContainer>
-            {/* ...legenda continua igual */}
           </CardContent>
         </Card>
       </div>
 
-
-      {/* Bottom Grid with Top Products Table */}
-      <div className="grid gap-4 grid-cols-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Produtos Mais Vendidos</CardTitle>
-            <CardDescription>Top 5 produtos com melhor performance este mês.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="text-center">Vendas</TableHead>
-                  <TableHead className="text-right">Receita</TableHead>
+      {/* Tabela de Top Produtos Dinâmica */}
+      <Card>
+        <CardHeader><CardTitle>Produtos Mais Vendidos</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produto</TableHead>
+                <TableHead className="text-center">Vendas</TableHead>
+                <TableHead className="text-right">Receita</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dashboardData?.topProducts.map((product) => (
+                <TableRow key={product.name}>
+                  <TableCell><div className="font-medium">{product.name}</div></TableCell>
+                  <TableCell className="text-center">{product.vendas}</TableCell>
+                  <TableCell className="text-right">{product.receita}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topProducts.map((product) => (
-                  <TableRow key={product.name}>
-                    <TableCell>
-                      <div className="font-medium">{product.name}</div>
-                    </TableCell>
-                    <TableCell className="text-center">{product.vendas}</TableCell>
-                    <TableCell className="text-right">{product.receita}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

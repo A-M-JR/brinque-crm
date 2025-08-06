@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { hasPermission } from '@/lib/auth/hasPermission';
 import { Product, listarProdutosPorFranchise, criarProduto } from '@/lib/supabase/products';
 import { Franchise, listarFranchisesVisiveis } from '@/lib/supabase/franchises';
+import { PageFeedback } from "@/components/ui/page-loader"
 
 // --- Componente de Cartão de Estatística ---
 const StatCard = ({ title, value, icon }: { title: string, value: string | number, icon: React.ReactNode }) => (
@@ -121,7 +122,7 @@ export default function ProdutosPage() {
   );
 
   if (authLoading || !permissions.canView) {
-    return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+    return <PageFeedback mode='both' />
   }
 
   return (
