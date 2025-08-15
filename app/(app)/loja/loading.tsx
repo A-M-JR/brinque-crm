@@ -8,7 +8,7 @@ export default function LojaLoading() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 lg:ml-64">
-        <Header />
+        <Header userRole={""} userName={""} />
         <main className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-8 w-32" />
