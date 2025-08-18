@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 // --- Imports ---
 import { Button } from "@/components/ui/button";
+import { documentMask } from '@/lib/utils';
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -242,7 +243,7 @@ export default function ClientesPage() {
             </div>
             <div>
               <Label htmlFor="cpf_cnpj">CPF / CNPJ</Label>
-              <Input id="cpf_cnpj" value={newClienteData.cpf_cnpj || ''} onChange={(e) => setNewClienteData(p => ({ ...p, cpf_cnpj: e.target.value }))} />
+              <Input maxLength={17} id="cpf_cnpj" value={documentMask(newClienteData.cpf_cnpj || '')} onChange={(e) => setNewClienteData(p => ({ ...p, cpf_cnpj: e.target.value }))} />
             </div>
             <DialogFooter className="mt-4">
               <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Cancelar</Button>
