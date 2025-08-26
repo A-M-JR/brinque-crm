@@ -277,12 +277,12 @@ export default function LeadsPage() {
           {selectedLead && <LeadForm mode="view" lead={selectedLead} />}
 
           <DialogFooter className="pt-4 sm:justify-between">
-            {selectedLead && permissions.canEdit && (
+            {/* {selectedLead && permissions.canEdit && (
               <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleConvertToReseller(selectedLead)}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 Converter para Revendedor
               </Button>
-            )}
+            )} */}
             <div className="flex items-center gap-2">
               <Select value={currentStatus} onValueChange={(value) => setCurrentStatus(value as Lead['status'])}>
                 <SelectTrigger className="w-[180px]">
