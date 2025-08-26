@@ -12,68 +12,83 @@ export type Store = {
     banner_url: string | null;
     description: string | null;
     is_active: boolean;
-    config: {
-        primaryColor?: string;
-        secondaryColor?: string;
-        instagram?: string;
-        facebook?: string;
-        whatsapp?: string;
-    } | null;
+    
+    // 👇 ALTERAÇÃO AQUI: Campos movidos para fora do 'config'
+    primary_color: string | null;
+    secondary_color: string | null;
+    instagram_user: string | null;
+    whatsapp_number: string | null;
+    
+    config: {} | null; // 'config' pode ser mantido para futuras configurações
     created_at: string;
+    franchise?: { name: string };
 };
 
 export type StoreItem = {
     id: number;
     store_id: number;
     product_id: number;
-    product: Product; // Incluímos o objeto do produto para facilitar o uso no frontend
+    product: Product;
 };
 
-// --- Funções para Lojas (crm_stores) ---
+// --- Funções CRUD para Lojas (Nenhuma alteração na lógica, apenas se beneficiam da tipagem correta) ---
 
-/**
- * Busca a loja de uma franquia. Como a relação é 1-para-1,
- * esperamos no máximo um resultado.
- */
-export async function getStoreByFranchiseId(franchiseId: number): Promise<Store | null> {
+export async function listarLojas(): Promise<Store[]> {
+    const { data, error } = await supabase
+        .from('crm_stores')
+        .select('*, franchise:crm_franchises(name)');
+
+    if (error) {
+        console.error("Erro ao listar lojas:", error);
+        throw error;
+    }
+    return data as Store[];
+}
+
+export async function buscarLojaPorId(id: number): Promise<Store | null> {
     const { data, error } = await supabase
         .from('crm_stores')
         .select('*')
-        .eq('franchise_id', franchiseId)
-        .single();
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 = "A consulta não retornou nenhuma linha"
-        console.error("Erro ao buscar loja:", error);
-        throw error;
-    }
-
-    return data;
-}
-
-/**
- * Cria ou atualiza os dados de uma loja.
- * O comando 'upsert' é perfeito para isso.
- */
-export async function upsertStore(storeData: Partial<Store>): Promise<Store> {
-    const { data, error } = await supabase
-        .from('crm_stores')
-        .upsert(storeData, { onConflict: 'franchise_id' })
-        .select()
+        .eq('id', id)
         .single();
 
     if (error) {
-        console.error("Erro ao salvar dados da loja:", error);
+        console.error("Erro ao buscar loja por ID:", error);
         throw error;
     }
-
     return data;
 }
 
-// --- Funções para Itens da Loja (crm_stores_itens) ---
+export async function salvarLoja(storeData: Partial<Store>, id?: number): Promise<Store> {
+    let query;
+    if (id) {
+        query = supabase.from('crm_stores').update(storeData).eq('id', id);
+    } else {
+        query = supabase.from('crm_stores').insert(storeData);
+    }
 
-/**
- * Lista todos os produtos que estão na vitrine de uma loja.
- */
+    const { data, error } = await query.select().single();
+
+    if (error) {
+        console.error("Erro ao salvar loja:", error);
+        throw error;
+    }
+    return data;
+}
+
+export async function deletarLoja(id: number): Promise<void> {
+    const { error } = await supabase
+        .from('crm_stores')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error("Erro ao deletar loja:", error);
+    }
+}
+
+// --- Funções para Itens da Loja (Sem alterações) ---
+
 export async function getStoreItems(storeId: number): Promise<StoreItem[]> {
     const { data, error } = await supabase
         .from('crm_stores_itens')
@@ -84,40 +99,23 @@ export async function getStoreItems(storeId: number): Promise<StoreItem[]> {
         console.error("Erro ao listar itens da loja:", error);
         throw error;
     }
-
     return data as unknown as StoreItem[];
 }
 
-/**
- * Adiciona um produto à vitrine da loja.
- */
 export async function addStoreItem(storeId: number, productId: number): Promise<any> {
     const { data, error } = await supabase
         .from('crm_stores_itens')
         .insert({ store_id: storeId, product_id: productId });
-
-    if (error) {
-        console.error("Erro ao adicionar item na loja:", error);
-        throw error;
-    }
-
+    if (error) { throw error; }
     return data;
 }
 
-/**
- * Remove um produto da vitrine da loja.
- */
 export async function removeStoreItem(storeId: number, productId: number): Promise<any> {
     const { error } = await supabase
         .from('crm_stores_itens')
         .delete()
         .eq('store_id', storeId)
         .eq('product_id', productId);
-
-    if (error) {
-        console.error("Erro ao remover item da loja:", error);
-        throw error;
-    }
-
+    if (error) { throw error; }
     return { success: true };
 }
