@@ -95,7 +95,7 @@ export function ProductForm({ initialData, onSubmit, loading = false, categories
                                 control={control}
                                 render={({ field }) => (
                                     <Select
-                                        value={field.value?.toString()}
+                                        value={field.value?.toString() ?? ''}
                                         onValueChange={(value) => field.onChange(parseInt(value))}
                                         disabled={loading}
                                     >

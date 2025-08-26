@@ -31,8 +31,8 @@ export default function EditProdutoPage() {
     }, [group, franchise]);
 
     const fetchData = useCallback(async () => {
+        // A verificação interna ainda é uma boa prática, mas a chamada agora é controlada pelo useEffect
         if (isNaN(produtoId) || !franchise?.id) {
-            router.push('/produtos');
             return;
         }
         setLoading(true);
@@ -46,6 +46,7 @@ export default function EditProdutoPage() {
                 setProduto(productData);
                 setCategories(categoriesData);
             } else {
+                // Se o produto não for encontrado (ex: ID inválido na URL), aí sim redirecionamos
                 router.push('/produtos');
             }
         } catch (error) {
@@ -55,9 +56,13 @@ export default function EditProdutoPage() {
         }
     }, [produtoId, router, franchise?.id]);
 
+    // 👇 AQUI ESTÁ A CORREÇÃO PRINCIPAL 👇
+    // O useEffect agora espera ativamente por franchise.id e um produtoId válido antes de chamar fetchData.
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (franchise?.id && !isNaN(produtoId)) {
+            fetchData();
+        }
+    }, [franchise?.id, produtoId, fetchData]);
 
     const handleSave = async (data: ProductFormData) => {
         if (!canEdit || !franchise?.id) return;
@@ -73,8 +78,6 @@ export default function EditProdutoPage() {
                 ...newImageUrls.map(url => ({ url }))
             ];
 
-            // CORREÇÃO: Remove os campos do formulário que não vão para o DB
-            // e passa o resto dos dados dinamicamente.
             const { new_images, existing_images, ...productData } = data;
 
             const productDataToSave = {
@@ -96,10 +99,12 @@ export default function EditProdutoPage() {
     }
 
     if (!produto) {
+        // Este estado pode ser mostrado brevemente antes do redirect se o produto não existir
         return (
             <div className="flex flex-col h-screen items-center justify-center text-center p-4">
                 <h2 className="text-2xl font-bold mb-2">Produto não encontrado</h2>
-                <Link href="/produtos"><Button><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button></Link>
+                <p className="text-muted-foreground mb-4">Redirecionando para a lista...</p>
+                <Link href="/produtos"><Button><ArrowLeft className="mr-2 h-4 w-4" />Voltar para a lista</Button></Link>
             </div>
         );
     }

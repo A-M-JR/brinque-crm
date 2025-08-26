@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -103,7 +104,11 @@ export default function ProdutosPage() {
         {franchise?.id === 1 && (
           <div className="flex items-center gap-2">
             <Label htmlFor="franchise-select" className="shrink-0">Visualizando Empresa:</Label>
-            <Select value={selectedFranchiseId?.toString()} onValueChange={(value) => setSelectedFranchiseId(Number(value))}>
+            {/* 👇 AQUI ESTÁ A CORREÇÃO 👇 */}
+            <Select 
+              value={selectedFranchiseId?.toString() ?? ''} 
+              onValueChange={(value) => setSelectedFranchiseId(Number(value))}
+            >
               <SelectTrigger id="franchise-select" className="w-[250px]"><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{franchises.map(f => <SelectItem key={f.id} value={f.id.toString()}>{f.name}</SelectItem>)}</SelectContent>
             </Select>
@@ -165,7 +170,13 @@ export default function ProdutosPage() {
                     <TableCell>{produto.inventory?.quantity ?? 0}</TableCell>
                     <TableCell><Badge variant={produto.status ? 'default' : 'secondary'}>{produto.status ? 'Ativo' : 'Inativo'}</Badge></TableCell>
                     <TableCell className="text-right">
-                      {permissions.canEdit && <Button variant="ghost" size="icon" onClick={() => router.push(`/produtos/${produto.id}`)}><Edit className="h-4 w-4" /></Button>}
+                      {permissions.canEdit && (
+                        <Link href={`/produtos/${produto.id}`} passHref>
+                          <Button variant="ghost" size="icon">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
