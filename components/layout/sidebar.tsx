@@ -66,7 +66,7 @@ const menuConfig: MenuSectionType[] = [
     items: [
       { title: "Pedidos", href: "/pedidos", icon: ShoppingCart, permission: "pedidos" },
       { title: "Vendas", href: "/vendas", icon: Truck, permission: "vendas" },
-      { title: "Loja", href: "/loja", icon: Store, permission: "loja" },
+      { title: "Lojas", href: "/lojas", icon: Store, permission: "loja" },
       { title: "Pagamentos", href: "/pagamentos", icon: CreditCard, permission: "pagamentos" },
     ],
   },
