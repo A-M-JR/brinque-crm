@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-// --- Imports ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,14 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Search, Package, CheckCircle, Eye } from 'lucide-react';
+import { Plus, Edit, Search, Package, CheckCircle, Eye, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPermission } from '@/lib/auth/hasPermission';
 import { Product, listarProdutosPorFranchise, criarProduto } from '@/lib/supabase/products';
 import { Franchise, listarFranchisesVisiveis } from '@/lib/supabase/franchises';
-import { PageFeedback } from "@/components/ui/page-loader"
+import { PageFeedback } from "@/components/ui/page-loader";
 
-// --- Componente de Cartão de Estatística ---
 const StatCard = ({ title, value, icon }: { title: string, value: string | number, icon: React.ReactNode }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -49,14 +47,13 @@ export default function ProdutosPage() {
   const [produtos, setProdutos] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | null>(null);
 
   useEffect(() => {
     if (franchise?.id) {
       setSelectedFranchiseId(franchise.id);
-      if (franchise.id === 1) { // Super admin
+      if (franchise.id === 1) { 
         listarFranchisesVisiveis(franchise.id).then(setFranchises);
       }
     }
@@ -93,6 +90,8 @@ export default function ProdutosPage() {
       const novoProduto = await criarProduto({
         name: 'Novo Produto (rascunho)',
         price: 0.00,
+        old_price: null,
+        is_new: false,
         status: false,
         show_on_store: false,
         franchise_id: selectedFranchiseId
@@ -114,6 +113,7 @@ export default function ProdutosPage() {
     total: produtos.length,
     active: produtos.filter(p => p.status).length,
     visibleOnStore: produtos.filter(p => p.show_on_store).length,
+    novidades: produtos.filter(p => p.is_new).length,
   }), [produtos]);
 
   const filteredProdutos = produtos.filter(produto =>
@@ -147,10 +147,11 @@ export default function ProdutosPage() {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard title="Total de Produtos" value={stats.total} icon={<Package className="h-4 w-4 text-muted-foreground" />} />
         <StatCard title="Produtos Ativos" value={stats.active} icon={<CheckCircle className="h-4 w-4 text-muted-foreground" />} />
         <StatCard title="Visíveis na Loja" value={stats.visibleOnStore} icon={<Eye className="h-4 w-4 text-muted-foreground" />} />
+        <StatCard title="Novidades" value={stats.novidades} icon={<Star className="h-4 w-4 text-yellow-500" />} />
       </div>
 
       <Card>
@@ -184,24 +185,30 @@ export default function ProdutosPage() {
                 <TableHead>Produto</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Preço</TableHead>
+                <TableHead>Preço Antigo</TableHead>
                 <TableHead>Estoque</TableHead>
+                <TableHead>Novidade</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[100px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center h-24">Carregando produtos...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center h-24">Carregando produtos...</TableCell></TableRow>
               ) : filteredProdutos.length > 0 ? (
                 filteredProdutos.map(produto => (
                   <TableRow key={produto.id}>
                     <TableCell className="font-medium">{produto.name}</TableCell>
                     <TableCell>{produto.sku || 'N/A'}</TableCell>
                     <TableCell>R$ {produto.price.toFixed(2)}</TableCell>
+                    <TableCell>{produto.old_price ? `R$ ${produto.old_price.toFixed(2)}` : '-'}</TableCell>
                     <TableCell>
                       <span className={produto.inventory && produto.inventory.quantity <= produto.inventory.min_stock_level ? 'text-red-500 font-bold' : ''}>
                         {produto.inventory?.quantity ?? 0}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {produto.is_new ? <Badge variant="default">Sim</Badge> : <Badge variant="secondary">Não</Badge>}
                     </TableCell>
                     <TableCell>
                       <Badge variant={produto.status ? 'default' : 'secondary'}>
@@ -219,7 +226,7 @@ export default function ProdutosPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center h-24">Nenhum produto encontrado.</TableCell>
+                  <TableCell colSpan={8} className="text-center h-24">Nenhum produto encontrado.</TableCell>
                 </TableRow>
               )}
             </TableBody>

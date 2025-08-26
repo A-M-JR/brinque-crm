@@ -1,9 +1,8 @@
 import { supabase } from "./client";
 
 export type Store = {
-  id: string;
+  id: number;
   franchise_id: number | null;
-  owner_user_id: string | null;
   name: string;
   description: string | null;
   slug: string;

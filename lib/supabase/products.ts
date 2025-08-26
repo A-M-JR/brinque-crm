@@ -2,6 +2,10 @@ import { supabase } from "./client";
 
 // --- Tipagens ---
 
+import { Category } from "./categories"; // Importar a tipagem
+
+// --- Tipagens ---
+
 export type Product = {
     id: number;
     created: string;
@@ -9,15 +13,20 @@ export type Product = {
     sku: string | null;
     description: string | null;
     price: number;
+    old_price: number | null;
+    is_new: boolean;
     status: boolean;
     show_on_store: boolean;
-    images: any | null; // JSONB
-    custom_fields: any | null; // JSONB
+    images: any | null;
+    custom_fields: any | null;
     franchise_id: number;
+    category_id: number | null; // <-- NOVO CAMPO
     inventory?: {
         quantity: number;
         min_stock_level: number;
     };
+    // Campo virtual para trazer os dados da categoria
+    category?: Pick<Category, 'id' | 'name'>;
 };
 
 export type Inventory = {
@@ -42,18 +51,21 @@ export type StockMovement = {
 export async function listarProdutosPorFranchise(franchiseId: number): Promise<Product[]> {
     const { data, error } = await supabase
         .from("crm_products")
-        .select("*, inventory:crm_inventory(quantity, min_stock_level)")
+        // ATUALIZADO: Trazendo dados da categoria junto
+        .select("*, inventory:crm_inventory(quantity, min_stock_level), category:crm_categories(id, name)")
         .eq("franchise_id", franchiseId)
         .order("name");
 
     if (error) throw error;
+    // Mapeamento para ajustar a estrutura do inventory
     return data.map(p => ({ ...p, inventory: p.inventory[0] })) as Product[];
 }
 
 export async function buscarProdutoPorId(id: number): Promise<Product | null> {
     const { data, error } = await supabase
         .from("crm_products")
-        .select("*, inventory:crm_inventory(quantity, min_stock_level)")
+        // ATUALIZADO: Trazendo dados da categoria junto
+        .select("*, inventory:crm_inventory(quantity, min_stock_level), category:crm_categories(id, name)")
         .eq("id", id)
         .single();
 
@@ -62,7 +74,8 @@ export async function buscarProdutoPorId(id: number): Promise<Product | null> {
     return { ...data, inventory: inventoryData } as Product;
 }
 
-export async function criarProduto(productData: Omit<Product, 'id' | 'created' | 'inventory'>): Promise<Product> {
+// ATUALIZADO: criarProduto agora aceita category_id
+export async function criarProduto(productData: Omit<Product, 'id' | 'created' | 'inventory' | 'category'>): Promise<Product> {
     const { data: newProduct, error: productError } = await supabase
         .from("crm_products")
         .insert([productData])
@@ -71,6 +84,7 @@ export async function criarProduto(productData: Omit<Product, 'id' | 'created' |
 
     if (productError) throw productError;
 
+    // Lógica de inventário permanece a mesma
     const { error: inventoryError } = await supabase
         .from("crm_inventory")
         .insert([{ product_id: newProduct.id, quantity: 0, min_stock_level: 0 }]);
@@ -83,7 +97,8 @@ export async function criarProduto(productData: Omit<Product, 'id' | 'created' |
     return newProduct as Product;
 }
 
-export async function atualizarProduto(id: number, updates: Partial<Omit<Product, 'id' | 'created' | 'inventory'>>): Promise<Product> {
+// ATUALIZADO: atualizarProduto agora aceita category_id
+export async function atualizarProduto(id: number, updates: Partial<Omit<Product, 'id' | 'created' | 'inventory' | 'category'>>): Promise<Product> {
     const { data, error } = await supabase
         .from("crm_products")
         .update(updates)
@@ -94,7 +109,6 @@ export async function atualizarProduto(id: number, updates: Partial<Omit<Product
     if (error) throw error;
     return data as Product;
 }
-
 // --- Funções para Inventário e Movimentações ---
 
 export async function atualizarInventario(productId: number, updates: Partial<Omit<Inventory, 'id' | 'product_id'>>): Promise<Inventory> {

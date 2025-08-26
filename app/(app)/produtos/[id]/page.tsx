@@ -55,12 +55,13 @@ export default function EditProdutoPage() {
         if (!canEdit) return;
         setSaving(true);
         try {
-            // Garante que estamos a enviar apenas os campos esperados pelo formulário
             const productDataToSave: ProductFormData = {
                 name: data.name,
                 sku: data.sku,
                 description: data.description,
                 price: data.price,
+                old_price: data.old_price,
+                is_new: data.is_new,
                 status: data.status,
                 show_on_store: data.show_on_store,
                 images: data.images,
@@ -68,12 +69,9 @@ export default function EditProdutoPage() {
             };
 
             await atualizarProduto(produtoId, productDataToSave);
-            // TODO: Adicionar toast de sucesso
             router.push('/produtos');
         } catch (error: any) {
-            // ATUALIZADO: Log de erro mais detalhado
-            console.error("Erro ao salvar produto. Mensagem do Supabase:", error.message || error);
-            // TODO: Adicionar toast de erro com a mensagem `error.message`
+            console.error("Erro ao salvar produto:", error.message || error);
         } finally {
             setSaving(false);
         }
@@ -87,7 +85,9 @@ export default function EditProdutoPage() {
         return (
             <div className="flex flex-col h-screen items-center justify-center text-center p-4">
                 <h2 className="text-2xl font-bold mb-2">Produto não encontrado</h2>
-                <Link href="/produtos"><Button><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button></Link>
+                <Link href="/produtos">
+                    <Button><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
+                </Link>
             </div>
         );
     }
