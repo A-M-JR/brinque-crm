@@ -65,9 +65,9 @@ const menuConfig: MenuSectionType[] = [
     title: "Vendas",
     items: [
       { title: "Pedidos", href: "/pedidos", icon: ShoppingCart, permission: "pedidos" },
-      { title: "Vendas", href: "/vendas", icon: Truck, permission: "vendas" },
+      // { title: "Vendas", href: "/vendas", icon: Truck, permission: "vendas" },
       { title: "Lojas", href: "/lojas", icon: Store, permission: "loja" },
-      { title: "Pagamentos", href: "/pagamentos", icon: CreditCard, permission: "pagamentos" },
+      // { title: "Pagamentos", href: "/pagamentos", icon: CreditCard, permission: "pagamentos" },
     ],
   },
   {
@@ -93,7 +93,7 @@ const menuConfig: MenuSectionType[] = [
           { title: "Grupos de Permissões", href: "/grupos", icon: Shield, permission: "grupos_permissoes" },
           // CORRIGIDO: A permissão para "Empresas" deve ser "empresas"
           { title: "Empresas", href: "/empresas", icon: Building2, permission: "permissoes" },
-          { title: "Integrações", href: "/integracoes", icon: Plug, permission: "integracoes" },
+          // { title: "Integrações", href: "/integracoes", icon: Plug, permission: "integracoes" },
         ],
       },
     ],
