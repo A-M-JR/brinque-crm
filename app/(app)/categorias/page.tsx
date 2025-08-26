@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 
 // Componentes UI
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { PageFeedback } from "@/components/ui/page-loader";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
 
 // Lógica de Categoria
 import { Category, listarCategoriasPorFranchise, criarCategoria, atualizarCategoria, deletarCategoria } from '@/lib/supabase/categories';
@@ -40,17 +39,16 @@ export default function CategoriasPage() {
             setCategories(data);
         } catch (error) {
             console.error("Erro ao carregar categorias:", error);
-            // TODO: Adicionar toast de erro
         } finally {
             setLoading(false);
         }
     }, [franchise?.id]);
 
     useEffect(() => {
-        if (!authLoading) {
+        if (!authLoading && franchise?.id) {
             fetchCategories();
         }
-    }, [authLoading, fetchCategories]);
+    }, [authLoading, franchise?.id, fetchCategories]);
 
     const handleOpenDialog = (category: Category | null = null) => {
         setSelectedCategory(category);
@@ -67,18 +65,14 @@ export default function CategoriasPage() {
         setSaving(true);
         try {
             if (selectedCategory?.id) {
-                // Editando
                 await atualizarCategoria(selectedCategory.id, data);
             } else {
-                // Criando
                 await criarCategoria({ ...data, franchise_id: franchise.id });
             }
-            // TODO: Adicionar toast de sucesso
-            fetchCategories(); // Re-fetch para atualizar a lista
+            fetchCategories();
             handleCloseDialog();
         } catch (error) {
             console.error("Erro ao salvar categoria:", error);
-            // TODO: Adicionar toast de erro
         } finally {
             setSaving(false);
         }
@@ -94,11 +88,9 @@ export default function CategoriasPage() {
         setSaving(true);
         try {
             await deletarCategoria(categoryToDelete.id);
-            // TODO: Adicionar toast de sucesso
-            fetchCategories(); // Re-fetch
+            fetchCategories();
         } catch (error) {
             console.error("Erro ao deletar categoria:", error);
-            // TODO: Adicionar toast de erro
         } finally {
             setSaving(false);
             setIsAlertOpen(false);
@@ -176,7 +168,6 @@ export default function CategoriasPage() {
                 </CardContent>
             </Card>
 
-            {/* Dialog para Criar/Editar */}
             <CategoryDialog
                 isOpen={isDialogOpen}
                 onClose={handleCloseDialog}
@@ -185,13 +176,12 @@ export default function CategoriasPage() {
                 loading={saving}
             />
 
-            {/* Alert para Deletar */}
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso irá deletar permanentemente a categoria "{categoryToDelete?.name}". Os produtos associados a ela não serão deletados, mas ficarão sem categoria.
+                            A categoria "{categoryToDelete?.name}" será deletada permanentemente. Produtos associados ficarão sem categoria.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
