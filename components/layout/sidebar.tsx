@@ -74,6 +74,8 @@ const menuConfig: MenuSectionType[] = [
     title: "Catálogo",
     items: [
       { title: "Produtos", href: "/produtos", icon: Package, permission: "produtos" },
+      { title: "Categorias", href: "/categorias", icon: Package, permission: "produtos" },
+      
       { title: "Estoque", href: "/estoque", icon: Package, permission: "estoque" },
     ],
   },

@@ -1,4 +1,5 @@
 import { supabase } from "./client";
+import { Category } from "./categories";
 
 // --- Tipagens ---
 
@@ -9,15 +10,19 @@ export type Product = {
     sku: string | null;
     description: string | null;
     price: number;
+    old_price: number | null;
+    is_new: boolean;
     status: boolean;
     show_on_store: boolean;
-    images: any | null; // JSONB
-    custom_fields: any | null; // JSONB
+    images: Array<{ url: string }> | null;
+    custom_fields: any | null;
     franchise_id: number;
+    category_id: number | null;
     inventory?: {
         quantity: number;
         min_stock_level: number;
     };
+    category?: Pick<Category, 'id' | 'name'>;
 };
 
 export type Inventory = {
@@ -36,40 +41,53 @@ export type StockMovement = {
     related_order_id: string | null;
 };
 
-
 // --- Funções para Produtos (crm_products) ---
 
-export async function listarProdutosPorFranchise(franchiseId: number): Promise<Product[]> {
-    const { data, error } = await supabase
+export async function listarProdutosPorFranchise(franchiseId: number, categoryId?: number | null): Promise<Product[]> {
+    let query = supabase
         .from("crm_products")
-        .select("*, inventory:crm_inventory(quantity, min_stock_level)")
-        .eq("franchise_id", franchiseId)
-        .order("name");
+        .select("*, inventory:crm_inventory(quantity, min_stock_level), category:crm_categories(id, name)")
+        .eq("franchise_id", franchiseId);
 
-    if (error) throw error;
+    if (categoryId) {
+        query = query.eq('category_id', categoryId);
+    }
+
+    const { data, error } = await query.order("name");
+
+    if (error) {
+        console.error("Erro ao listar produtos:", error);
+        throw error;
+    }
     return data.map(p => ({ ...p, inventory: p.inventory[0] })) as Product[];
 }
 
 export async function buscarProdutoPorId(id: number): Promise<Product | null> {
     const { data, error } = await supabase
         .from("crm_products")
-        .select("*, inventory:crm_inventory(quantity, min_stock_level)")
+        .select("*, inventory:crm_inventory(quantity, min_stock_level), category:crm_categories(id, name)")
         .eq("id", id)
         .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error("Erro ao buscar produto por ID:", error);
+        throw error;
+    }
     const inventoryData = Array.isArray(data.inventory) ? data.inventory[0] : data.inventory;
     return { ...data, inventory: inventoryData } as Product;
 }
 
-export async function criarProduto(productData: Omit<Product, 'id' | 'created' | 'inventory'>): Promise<Product> {
+export async function criarProduto(productData: Omit<Product, 'id' | 'created' | 'inventory' | 'category'>): Promise<Product> {
     const { data: newProduct, error: productError } = await supabase
         .from("crm_products")
         .insert([productData])
         .select()
         .single();
 
-    if (productError) throw productError;
+    if (productError) {
+        console.error("Erro ao criar produto:", productError);
+        throw productError;
+    }
 
     const { error: inventoryError } = await supabase
         .from("crm_inventory")
@@ -77,13 +95,14 @@ export async function criarProduto(productData: Omit<Product, 'id' | 'created' |
 
     if (inventoryError) {
         await supabase.from("crm_products").delete().eq("id", newProduct.id);
+        console.error("Erro ao criar inventário (produto revertido):", inventoryError);
         throw inventoryError;
     }
 
     return newProduct as Product;
 }
 
-export async function atualizarProduto(id: number, updates: Partial<Omit<Product, 'id' | 'created' | 'inventory'>>): Promise<Product> {
+export async function atualizarProduto(id: number, updates: Partial<Omit<Product, 'id' | 'created' | 'inventory' | 'category'>>): Promise<Product> {
     const { data, error } = await supabase
         .from("crm_products")
         .update(updates)
@@ -91,10 +110,15 @@ export async function atualizarProduto(id: number, updates: Partial<Omit<Product
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        console.error("Erro ao atualizar produto:", error);
+        throw error;
+    }
     return data as Product;
 }
 
+// --- Funções de Inventário (sem alterações) ---
+// ... (manter as funções de inventário existentes aqui)
 // --- Funções para Inventário e Movimentações ---
 
 export async function atualizarInventario(productId: number, updates: Partial<Omit<Inventory, 'id' | 'product_id'>>): Promise<Inventory> {
