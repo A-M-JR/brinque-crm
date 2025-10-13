@@ -12,7 +12,8 @@ import { hasPermission } from "@/lib/auth/hasPermission"
 // --- Imports dos Ícones (lucide-react) ---
 import {
   LayoutDashboard, Users, Package, ShoppingCart, BarChart3, Settings, Store, UserCheck,
-  Truck, CreditCard, Building2, Plug, Menu, UserPlus, ShieldCheck, Shield, ChevronDown, LucideProps
+  Truck, CreditCard, Building2, Plug, Menu, UserPlus, ShieldCheck, Shield, ChevronDown, LucideProps,
+  Notebook
 } from "lucide-react"
 
 // --- Imports dos Componentes UI (shadcn/ui) ---
@@ -65,9 +66,9 @@ const menuConfig: MenuSectionType[] = [
     title: "Vendas",
     items: [
       { title: "Pedidos", href: "/pedidos", icon: ShoppingCart, permission: "pedidos" },
-      // { title: "Vendas", href: "/vendas", icon: Truck, permission: "vendas" },
       { title: "Lojas", href: "/lojas", icon: Store, permission: "loja" },
-      // { title: "Pagamentos", href: "/pagamentos", icon: CreditCard, permission: "pagamentos" },
+      { title: "Assinaturas", href: "/assinaturas", icon: CreditCard, permission: "assinaturas" },
+      { title: "Planos de assinatura", href: "/planos-assinatura", icon: Notebook, permission: "assinaturas" },
     ],
   },
   {
@@ -75,7 +76,7 @@ const menuConfig: MenuSectionType[] = [
     items: [
       { title: "Produtos", href: "/produtos", icon: Package, permission: "produtos" },
       { title: "Categorias", href: "/categorias", icon: Package, permission: "produtos" },
-      
+
       { title: "Estoque", href: "/estoque", icon: Package, permission: "estoque" },
     ],
   },
@@ -187,7 +188,7 @@ function SidebarContent() {
       <div className="flex h-14 items-center border-b px-4 gap-2">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
           <Package className="h-6 w-6 text-primary" />
-          <span className="hidden sm:inline tracking-tight">CRM System</span>
+          <span className="hidden sm:inline tracking-tight">CRM BitWise</span>
         </Link>
       </div>
       <ScrollArea className="flex-1 px-2 py-4">

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -11,12 +11,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from 'lucide-react';
-import { Company } from "@/lib/supabase/companies";
-import { Subscription, SubscriptionPlan, listarAssinaturasPorCliente, listarPlanosPorFranchise, criarAssinatura } from "@/lib/supabase/subscriptions";
+import { Plus } from "lucide-react";
 
-// --- Tipagens ---
-export type ClienteFormData = Omit<Company, 'id' | 'created' | 'franchise_id'>;
+import { Company } from "@/lib/supabase/companies";
+import {
+    Subscription,
+    SubscriptionPlan,
+    listarAssinaturasPorCliente,
+    listarPlanosPorFranchise,
+    criarAssinatura,
+} from "@/lib/supabase/subscriptions";
+
+// Tipagem do formulário do cliente
+export type ClienteFormData = Omit<Company, "id" | "created" | "franchise_id">;
 
 type ClienteFormProps = {
     cliente: Company; // Recebe o cliente completo, incluindo o ID
@@ -24,51 +31,97 @@ type ClienteFormProps = {
     loading?: boolean;
 };
 
-// --- Componente do Formulário de Nova Assinatura ---
-const NovaAssinaturaForm = ({ planos, onSave, onCancel }: { planos: SubscriptionPlan[], onSave: (data: any) => void, onCancel: () => void }) => {
-    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-    const [valor, setValor] = useState<number>(0);
+// Helpers
+const formatCentsToBRL = (cents: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((cents || 0) / 100);
+
+// Formulário de Nova Assinatura (dentro do Dialog)
+const NovaAssinaturaForm = ({
+    planos,
+    onSave,
+    onCancel,
+}: {
+    planos: SubscriptionPlan[];
+    onSave: (data: { subscription_plan_id: number; plan_name: string; amount_cents: number }) => void;
+    onCancel: () => void;
+}) => {
+    const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+    const [valorUS, setValorUS] = useState<string>(""); // padrão americano 1234.56
 
     const handlePlanChange = (planId: string) => {
-        const plan = planos.find(p => p.id.toString() === planId);
+        setSelectedPlanId(planId);
+        const plan = planos.find((p) => String(p.id) === planId);
         if (plan) {
-            setSelectedPlanId(planId);
-            setValor(plan.default_price);
+            const preco = Number(plan.default_price ?? 0); // esperado em reais
+            setValorUS(Number.isFinite(preco) ? preco.toFixed(2) : "");
+        } else {
+            setValorUS("");
         }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ plan_id: parseInt(selectedPlanId, 10), value: valor });
+        const plan = planos.find((p) => String(p.id) === selectedPlanId);
+        if (!plan) return;
+
+        const amount = Number((valorUS || "").replace(/[^0-9.]/g, "")) || 0;
+        const amount_cents = Math.round(amount * 100);
+
+        onSave({
+            subscription_plan_id: Number(plan.id),
+            plan_name: String(plan.name),
+            amount_cents,
+        });
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
             <div>
                 <Label htmlFor="plano">Plano de Assinatura</Label>
-                <Select onValueChange={handlePlanChange} value={selectedPlanId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione um plano..." /></SelectTrigger>
+                <Select onValueChange={handlePlanChange} value={selectedPlanId || "all"}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecione um plano..." />
+                    </SelectTrigger>
                     <SelectContent>
-                        {planos.map(plan => (
-                            <SelectItem key={plan.id} value={plan.id.toString()}>{plan.name} ({plan.billing_cycle})</SelectItem>
+                        <SelectItem value="all">Selecione...</SelectItem>
+                        {planos.map((plan) => (
+                            <SelectItem key={plan.id} value={String(plan.id)}>
+                                {plan.name} {plan.billing_cycle ? `(${plan.billing_cycle})` : ""}
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
             </div>
+
             <div>
-                <Label htmlFor="valor">Valor (R$)</Label>
-                <Input id="valor" type="number" step="0.01" value={valor} onChange={e => setValor(parseFloat(e.target.value))} required />
+                <Label htmlFor="valor">Valor (formato 1234.56)</Label>
+                <Input
+                    id="valor"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Ex.: 99.90"
+                    value={valorUS}
+                    onChange={(e) => setValorUS(e.target.value)}
+                    required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                    Digite com ponto como separador decimal. O valor será salvo em centavos (BRL).
+                </p>
             </div>
+
             <DialogFooter>
-                <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
-                <Button type="submit">Adicionar Assinatura</Button>
+                <Button type="button" variant="ghost" onClick={onCancel}>
+                    Cancelar
+                </Button>
+                <Button type="submit" disabled={!selectedPlanId || selectedPlanId === "all"}>
+                    Adicionar Assinatura
+                </Button>
             </DialogFooter>
         </form>
     );
 };
 
-
-// --- Componente Principal do Formulário do Cliente ---
+// Componente Principal
 export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormProps) {
     const { register, handleSubmit, control, reset, formState: { errors } } = useForm<ClienteFormData>({
         defaultValues: cliente,
@@ -81,8 +134,8 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
     const fetchAssinaturasEPlanos = useCallback(async () => {
         try {
             const [assinaturasData, planosData] = await Promise.all([
-                listarAssinaturasPorCliente(cliente.id),
-                listarPlanosPorFranchise(cliente.franchise_id)
+                listarAssinaturasPorCliente(cliente.id), // company_id
+                listarPlanosPorFranchise(cliente.franchise_id),
             ]);
             setAssinaturas(assinaturasData || []);
             setPlanos(planosData || []);
@@ -99,18 +152,27 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
         reset(cliente);
     }, [cliente, reset]);
 
-    const handleNovaAssinatura = async (data: { plan_id: number, value: number }) => {
+    const handleNovaAssinatura = async (data: {
+        subscription_plan_id: number;
+        plan_name: string;
+        amount_cents: number;
+    }) => {
         try {
             await criarAssinatura({
-                customer_id: cliente.id,
-                plan_id: data.plan_id,
-                value: data.value,
-                status: 'ativa',
-                start_date: new Date().toISOString().split('T')[0],
-                end_date: null,
-                next_billing_date: null,
-                metadata: {}
+                franchise_id: cliente.franchise_id,
+                user_id: null, // se houver vínculo a usuário, ajuste aqui
+                company_id: cliente.id, // vínculo com cliente/empresa
+
+                subscription_plan_id: data.subscription_plan_id,
+                plan_name: data.plan_name,
+                amount_cents: data.amount_cents,
+                currency: "BRL",
+
+                status: "authorized", // status inicial
+                mp_preapproval_id: null,
+                raw: null,
             });
+
             setDialogOpen(false);
             await fetchAssinaturasEPlanos();
         } catch (error) {
@@ -118,11 +180,34 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
         }
     };
 
-    const getStatusVariant = (status: string) => {
+    const getStatusVariant = (status?: string | null) => {
         switch (status) {
-            case 'ativa': return 'default';
-            case 'cancelada': return 'destructive';
-            default: return 'secondary';
+            case "authorized":
+                return "default";
+            case "cancelled":
+                return "destructive";
+            case "paused":
+            case "expired":
+            case "finished":
+            default:
+                return "secondary";
+        }
+    };
+
+    const renderStatusPtBr = (status?: string | null) => {
+        switch (status) {
+            case "authorized":
+                return "Autorizada";
+            case "paused":
+                return "Pausada";
+            case "cancelled":
+                return "Cancelada";
+            case "expired":
+                return "Expirada";
+            case "finished":
+                return "Finalizada";
+            default:
+                return "-";
         }
     };
 
@@ -135,13 +220,15 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
                     <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
                 </TabsList>
 
+                {/* Aba Cadastro */}
                 <TabsContent value="cadastro">
                     <form onSubmit={handleSubmit(onSubmit)}>
                         <Card>
-                            <CardHeader><CardTitle>Informações do Cliente</CardTitle></CardHeader>
+                            <CardHeader>
+                                <CardTitle>Informações do Cliente</CardTitle>
+                            </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* CAMPOS RESTAURADOS */}
                                     <div>
                                         <Label htmlFor="name">Nome / Razão Social</Label>
                                         <Input id="name" {...register("name", { required: "O nome é obrigatório" })} disabled={loading} />
@@ -181,7 +268,13 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
                                             name="status"
                                             control={control}
                                             render={({ field }) => (
-                                                <select {...field} value={field.value ? 'true' : 'false'} onChange={(e) => field.onChange(e.target.value === 'true')} className="w-full mt-1 block border rounded-md px-3 py-2 bg-white" disabled={loading}>
+                                                <select
+                                                    {...field}
+                                                    value={field.value ? "true" : "false"}
+                                                    onChange={(e) => field.onChange(e.target.value === "true")}
+                                                    className="w-full mt-1 block border rounded-md px-3 py-2 bg-white"
+                                                    disabled={loading}
+                                                >
                                                     <option value="true">Ativo</option>
                                                     <option value="false">Inativo</option>
                                                 </select>
@@ -199,6 +292,7 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
                     </form>
                 </TabsContent>
 
+                {/* Aba Assinaturas */}
                 <TabsContent value="assinaturas">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -214,20 +308,32 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
                                     <TableRow>
                                         <TableHead>Plano</TableHead>
                                         <TableHead>Valor</TableHead>
-                                        <TableHead>Data de Início</TableHead>
+                                        <TableHead>Criada em</TableHead>
                                         <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {assinaturas.length > 0 ? assinaturas.map((sub) => (
-                                        <TableRow key={sub.id}>
-                                            <TableCell>{(sub as any).crm_subscription_plans?.name || 'Plano não encontrado'}</TableCell>
-                                            <TableCell>R$ {sub.value.toFixed(2)}</TableCell>
-                                            <TableCell>{new Date(sub.start_date).toLocaleDateString()}</TableCell>
-                                            <TableCell><Badge variant={getStatusVariant(sub.status)}>{sub.status}</Badge></TableCell>
+                                    {assinaturas.length > 0 ? (
+                                        assinaturas.map((sub) => (
+                                            <TableRow key={sub.id}>
+                                                <TableCell>
+                                                    {sub.plan_name || (sub as any).crm_subscription_plans?.name || "Plano não encontrado"}
+                                                </TableCell>
+                                                <TableCell>{formatCentsToBRL(sub.amount_cents)}</TableCell>
+                                                <TableCell>
+                                                    {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : "-"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={getStatusVariant(sub.status)}>{renderStatusPtBr(sub.status)}</Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center h-24">
+                                                Nenhuma assinatura encontrada.
+                                            </TableCell>
                                         </TableRow>
-                                    )) : (
-                                        <TableRow><TableCell colSpan={4} className="text-center h-24">Nenhuma assinatura encontrada.</TableCell></TableRow>
                                     )}
                                 </TableBody>
                             </Table>
@@ -235,9 +341,12 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
                     </Card>
                 </TabsContent>
 
+                {/* Aba Pagamentos */}
                 <TabsContent value="pagamentos">
                     <Card>
-                        <CardHeader><CardTitle>Histórico de Pagamentos</CardTitle></CardHeader>
+                        <CardHeader>
+                            <CardTitle>Histórico de Pagamentos</CardTitle>
+                        </CardHeader>
                         <CardContent className="text-center p-8">
                             <p>O histórico de pagamentos será implementado aqui.</p>
                         </CardContent>
@@ -245,13 +354,18 @@ export function ClienteForm({ cliente, onSubmit, loading = false }: ClienteFormP
                 </TabsContent>
             </Tabs>
 
+            {/* Dialog de Nova Assinatura */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Adicionar Nova Assinatura</DialogTitle>
                         <DialogDescription>Selecione um plano e confirme o valor para o cliente.</DialogDescription>
                     </DialogHeader>
-                    <NovaAssinaturaForm planos={planos} onSave={handleNovaAssinatura} onCancel={() => setDialogOpen(false)} />
+                    <NovaAssinaturaForm
+                        planos={planos}
+                        onSave={handleNovaAssinatura}
+                        onCancel={() => setDialogOpen(false)}
+                    />
                 </DialogContent>
             </Dialog>
         </>

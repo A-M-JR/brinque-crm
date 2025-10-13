@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'CRM Brinque Brinque',
+  title: 'CRM BitWise',
   description: 'Created with BitWise',
 }
 

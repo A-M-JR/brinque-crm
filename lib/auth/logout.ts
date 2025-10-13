@@ -1,4 +1,4 @@
-//lib\auth\logout.ts
+// lib/auth/logout.ts
 import { supabase } from "@/lib/supabase/client"
 
 export async function logout() {
@@ -8,18 +8,29 @@ export async function logout() {
 
     if (!token) return;
 
-    // Remover token local
-    localStorage.removeItem("session_token");
+    try {
+        // Encerrar sessão no banco
+        const { error } = await supabase
+            .from("crm_sessions")
+            .update({
+                is_active: false,
+                last_activity: new Date().toISOString(),
+                modified_at: new Date().toISOString(),
+            })
+            .eq("token", token);
 
-    // Encerrar sessão no banco
-    await supabase
-        .from("crm_sessions")
-        .update({
-            is_active: false,
-            last_activity: new Date().toISOString(),
-        })
-        .eq("token", token);
+        if (error) {
+            console.error("Erro ao encerrar sessão no banco:", error);
+        }
+    } catch (err) {
+        console.error("Erro inesperado no logout:", err);
+    } finally {
+        // Remover token local sempre
+        localStorage.removeItem("session_token");
 
-    // Redirecionar
-    window.location.href = "/login";
+        // Redirecionar
+        if (typeof window !== "undefined") {
+            window.location.href = "/login";
+        }
+    }
 }

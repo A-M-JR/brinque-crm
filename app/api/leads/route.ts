@@ -7,7 +7,7 @@ export async function OPTIONS(request: Request) {
     return new NextResponse(null, {
         status: 204,
         headers: {
-            'Access-Control-Allow-Origin': 'https://www.brinquebrinque.com.br',
+            // 'Access-Control-Allow-Origin': 'https://www.brinquebrinque.com.br',
             'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },

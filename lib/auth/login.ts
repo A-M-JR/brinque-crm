@@ -1,22 +1,27 @@
 // lib/auth/login.ts
 import { supabase } from "@/lib/supabase/client"
 import { v4 as uuid } from "uuid"
+import bcrypt from "bcryptjs"
 
 export async function login(email: string, password: string) {
-    // Buscar o usuário
+    // Buscar usuário pelo email (não filtrar a senha direto no banco!)
     const { data: user, error } = await supabase
         .from("crm_users")
         .select("*")
         .eq("email", email)
-        .eq("password", password) // em produção: use hash!
+        .eq("id_status", 1) // só usuários ativos
         .single()
 
+        console.log(user, error);
     if (error || !user) return null
+
+    // Comparar a senha com bcrypt
+    const passwordOk = await bcrypt.compare(password, user.password)
+    if (!passwordOk) return null
 
     // Gerar token da sessão
     const token = uuid()
 
-    // Dados de ambiente (browser)
     const ip_address =
         typeof window !== "undefined" ? window.location.hostname : null
 
